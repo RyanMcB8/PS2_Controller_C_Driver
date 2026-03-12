@@ -10,11 +10,47 @@
 #include <stdint.h>
 
 /* ====================================================================================================================================================== */
-/*                                                      Addition of typedefs                                                                              */
+/*                                                     Definition of types used                                                                           */
 /* ====================================================================================================================================================== */
+/* Boolean data */
 #ifndef _Bool
 #define _Bool boolean
 #endif
+
+/* 16 bit unsigned integers. */
+#ifndef uint16_t
+#define uint16_t unsigned int
+#endif
+
+/* 16 bit unsigned integers. */
+#ifndef uint8_t
+#define uint8_t char
+#endif
+
+/* Definition of true. */
+#ifndef true
+#define true 1
+#endif
+
+/* Defintion of false. */
+#ifndef false
+#define false 0
+#endif
+
+/* THESE DEFINTIONS ARE TEMPORARY AND MUST BE ALTERED TO BE THE CORRECT DELAY FUNCTION FOR THE PLATFORM USED. */
+/* Defintion of delay. */
+#ifndef delayMicroseconds
+#define delayMicroseconds(x) x*10 
+#endif
+
+/* Defintion of delay. */
+#ifndef delay
+#define delay(x) x*10 
+#endif
+
+/* ====================================================================================================================================================== */
+/*                                                      Addition of typedefs                                                                              */
+/* ====================================================================================================================================================== */
 
 
 /* A struct which holds data associated with the transmission of data as well as meta data for the controller. */
@@ -22,7 +58,7 @@ typedef struct{
     unsigned long last_read;
     char read_delay;
     char controller_type;
-} PS2ControllerData;
+} PS2ControllerData_t;
 
 /* A struct which holds variable to turn on and off the rumble and pressure sensing within the controller. */
 typedef struct{
@@ -49,17 +85,7 @@ typedef struct{
 typedef struct{
     unsigned int last_buttons;
     unsigned int buttons;   
-} ButtonHistory_t;
-
-/* A struct for holding the commands necessary for transmission and reception of data using the PS2 controller protocol. */
-typedef struct{
-    char enter_config[5];
-    char set_mode[9];
-    char set_bytes_large[9];
-    char exit_config[9];
-    char enable_rumble[5];
-    char type_read[9];
-} PS2Cmds_t;
+} PS2ButtonHistory_t;
 
 /* ====================================================================================================================================================== */
 /*                                                      Addition of definitions                                                                           */
@@ -68,7 +94,6 @@ typedef struct{
 #define CTRL_CLK        6 //5
 #define CTRL_CLK_HIGH   6 //5
 #define CTRL_BYTE_DELAY 5 //4
-#endif 
 
 /* Home buttons */
 #define PS_SELECT      0x0001
@@ -107,11 +132,38 @@ typedef struct{
 #define PS2_CHECK(x,y) (x & (1<<y))
 #define PS2_TOGGLE(x,y) (x^=(1<<y))
 
+/* ====================================================================================================================================================== */
+/*                                                      Creation of the inline void functions                                                             */
+/* ====================================================================================================================================================== */
+
+inline void PS2_CLK_SET(void);
+inline void PS2_CLK_CLR(void);
+inline void PS2_CMD_SET(void);
+inline void PS2_CMD_CLR(void);
+inline void PS2_ATT_SET(void);
+inline void PS2_ATT_CLR(void);
+inline _Bool PS2_DAT_CHK(void);
 
 /* ====================================================================================================================================================== */
 /*                                                      Addition of function declarations                                                                 */
 /* ====================================================================================================================================================== */
+/** @brief A function that is capable of updating the button states
+ *  @param button An unsigned 16 bit integer referencing the button ID defined in "PS2_driver.h"
+ *  @retval Boolean value indicating if there has been a change in button states from the last time it was run.
+*/
+_Bool NewButtonState(uint16_t button);
+
+/** @brief A function that checks if the button has been pressed.
+ *  @param button An unsigned 16 bit integer referencing the button ID defined in "PS2_driver.h".
+ *  @retval Returns a boolean value indicating if the button referenced has changed state.
+ */
+_Bool ButtonPressed(uint16_t button);
 
 
-#endif
+
+_Bool Button(uint16_t);
+
+
+
+#endif /* End of recurssion prevention. */
 

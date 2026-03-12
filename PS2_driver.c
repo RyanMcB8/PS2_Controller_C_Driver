@@ -3,18 +3,30 @@
 
 
 /* ==================== Defintion of any static variables. ==================== */
-static PS2Cmds_t commands;
-commands.enter_config = {0x01,0x43,0x00,0x01,0x00};
-commands.set_mode = {0x01,0x44,0x00,0x01,0x03,0x00,0x00,0x00,0x00};
-commands.set_bytes_large = {0x01,0x4F,0x00,0xFF,0xFF,0x03,0x00,0x00,0x00};
-commands.exit_config = {0x01,0x43,0x00,0x00,0x5A,0x5A,0x5A,0x5A,0x5A};
-commands.enable_rumble = {0x01,0x4D,0x00,0x00,0x01};
-commands.type_read = {0x01,0x45,0x00,0x5A,0x5A,0x5A,0x5A,0x5A,0x5A};
+
+static char PS2CmdEnter_config[] = {0x01,0x43,0x00,0x01,0x00};
+static char PS2CmdSet_mode[] = {0x01,0x44,0x00,0x01,0x03,0x00,0x00,0x00,0x00};
+static char PS2CmdSet_bytes_large[] = {0x01,0x4F,0x00,0xFF,0xFF,0x03,0x00,0x00,0x00};
+static char PS2CmdExit_config[] = {0x01,0x43,0x00,0x00,0x5A,0x5A,0x5A,0x5A,0x5A};
+static char PS2CmdEnable_rumble[] = {0x01,0x4D,0x00,0x00,0x01};
+static char PS2CmdType_read[] = {0x01,0x45,0x00,0x5A,0x5A,0x5A,0x5A,0x5A,0x5A};
+
+static PS2ControllerData_t PS2ControllerData;
+
+static PS2FeedbackEnable_t PS2FeedbackEnable;
+
+static PS2ButtonHistory_t PS2ButtonHistory;
+
+/* ==================== Defintion of any non static variables. ==================== */
+
+unsigned char PS2data[21];
+
+PS2Flags_t PS2Flags;
 
 /* ==================== Defintion of functions. ==================== */
 
-_Bool NewButtonState(unsigned int button) {
-    return (((last_buttons ^ buttons) & button) > 0);
+_Bool NewButtonState(uint16_t button) {
+    return (((PS2ButtonHistory.last_buttons ^ PS2ButtonHistory.buttons) & button) > 0);
 }
 
 /*                #   #  #####  #   #
@@ -24,7 +36,7 @@ _Bool NewButtonState(unsigned int button) {
                   #   #  #####   # #
 */
 
-_Bool ButtonPressed(unsigned int button) {
+_Bool ButtonPressed(uint16_t button) {
     return(NewButtonState(button) & Button(button));
 }
 
@@ -35,8 +47,8 @@ _Bool ButtonPressed(unsigned int button) {
                   #   #  #####   # #
 */
 
-_Bool ButtonReleased(unsigned int button) {
-    return((NewButtonState(button)) & ((~last_buttons & button) > 0));
+_Bool ButtonReleased(uint16_t button) {
+    return((NewButtonState(button)) & ((~PS2ButtonHistory.last_buttons & button) > 0));
 }
 
 /*                #   #  #####  #   #
@@ -47,7 +59,7 @@ _Bool ButtonReleased(unsigned int button) {
 */
 
 _Bool Button(uint16_t button) {
-    return ((~buttons & button) > 0);
+    return ((PS2ButtonHistory.buttons & button) > 0);
 }
 
 /*                #   #  #####  #   #
@@ -57,8 +69,8 @@ _Bool Button(uint16_t button) {
                   #   #  #####   # #
 */
 
-uint ButtonDataByte() {
-    return (~buttons);
+unsigned int ButtonDataByte() {
+    return (~PS2ButtonHistory.buttons);
 }
 
 /*                #   #  #####  #   #
@@ -68,7 +80,7 @@ uint ButtonDataByte() {
                   #   #  #####   # #
 */
 
-char Analog(byte button) {
+char Analog(char button) {
     return PS2data[button];
 }
 
@@ -79,23 +91,23 @@ char Analog(byte button) {
                   #   #  #####   # #
 */
 
-char gamepad_shiftinout (char byte) {
+char _gamepad_shiftinout (char byte) {
     unsigned char tmp = 0;
-    for(i=0;i<8;i++) {
+    for(uint8_t i=0;i<8;i++) {
 
-        if(CHK(byte,i)) CMD_SET();
-        else  CMD_CLR();
-        CLK_CLR();
+        if(PS2_CHECK(byte,i)) PS2_CMD_SET();
+        else  PS2_CMD_CLR();
+        PS2_CLK_CLR();
 
         delayMicroseconds(CTRL_CLK);
 
-        if(DAT_CHK()) SET(tmp,i);
-        CLK_SET();
+        if(PS2_DAT_CHK()) PS2_SET(tmp,i);
+        PS2_CLK_SET();
 #if CTRL_CLK_HIGH
         delayMicroseconds(CTRL_CLK_HIGH);
 #endif	  
     }
-    CMD_SET();
+    PS2_CMD_SET();
     delayMicroseconds(CTRL_BYTE_DELAY);
     return tmp;
 }
@@ -118,7 +130,7 @@ void read_gamepad() {
                   #   #  #####   # #
 */
 
-_Bool read_gamepad(boolean motor1, byte motor2) {
+_Bool read_gamepad(_Bool motor1, char motor2) {
     double temp = millis() - last_read;
 
     if (temp > 1500) //waited to long
@@ -209,7 +221,7 @@ _Bool read_gamepad(boolean motor1, byte motor2) {
                   #   #  #####   # #
 */
 
-char config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, bool pressures, bool rumble) {
+char config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, _Bool pressures, _Bool rumble) {
 
     byte temp[sizeof(type_read)];
 
@@ -335,15 +347,15 @@ char config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, bool pre
                   #   #  #####   # #
 */
 
-void sendCommandString(byte string[], byte len) {
+void sendCommandString(char string[], char len) {
 
 
 #ifdef PS2X_COM_DEBUG
-    byte temp[len];
+    char temp[len];
     ATT_CLR(); // low enable joystick
     delayMicroseconds(CTRL_BYTE_DELAY);
 
-    for (int y=0; y < len; y++)
+    for (uint8_t y=0; y < len; y++)
         temp[y] = _gamepad_shiftinout(string[y]);
 
     ATT_SET(); //high disable joystick  
@@ -359,19 +371,19 @@ void sendCommandString(byte string[], byte len) {
     Serial.println("");
 
 #else
-    ATT_CLR(); // low enable joystick
-    for (int y=0; y < len; y++)
+    PS2_ATT_CLR(); // low enable joystick
+    for (uint8_t y=0; y < len; y++)
         _gamepad_shiftinout(string[y]);
 
-    ATT_SET(); //high disable joystick  
-    delay(read_delay);                  //wait a few
+    PS2_ATT_SET(); //high disable joystick  
+    delay(PS2ControllerData.read_delay);                  //wait a few
 #endif
 }
 
 char readType() {
-    if(controller_type == 0x03)
+    if(PS2ControllerData.controller_type == 0x03)
         return 1;
-    else if(controller_type == 0x01)
+    else if(PS2ControllerData.controller_type == 0x01)
         return 2;
 
     return 0;
@@ -379,18 +391,18 @@ char readType() {
 
 void enableRumble() {
 
-    sendCommandString(enter_config, sizeof(enter_config));
-    sendCommandString(enable_rumble, sizeof(enable_rumble));
-    sendCommandString(exit_config, sizeof(exit_config));
-    en_Rumble = true;
+    sendCommandString(PS2CmdEnter_config, sizeof(PS2CmdEnter_config));
+    sendCommandString(PS2CmdEnable_rumble, sizeof(PS2CmdEnable_rumble));
+    sendCommandString(PS2CmdExit_config, sizeof(PS2CmdExit_config));
+    PS2FeedbackEnable.en_Rumble = true;
 
 }
 
 _Bool enablePressures() {
 
-    sendCommandString(enter_config, sizeof(enter_config));
-    sendCommandString(set_bytes_large, sizeof(set_bytes_large));
-    sendCommandString(exit_config, sizeof(exit_config));
+    sendCommandString(PS2CmdEnter_config, sizeof(PS2CmdEnter_config));
+    sendCommandString(PS2CmdSet_bytes_large, sizeof(PS2CmdSet_bytes_large));
+    sendCommandString(PS2CmdExit_config, sizeof(PS2CmdExit_config));
 
     read_gamepad();
     read_gamepad();
@@ -398,50 +410,50 @@ _Bool enablePressures() {
     if(PS2data[1] != 0x79)
         return false;
 
-    en_Pressures = true;
+    PS2FeedbackEnable.en_Pressures = true;
     return true;
 }
 
 void reconfig_gamepad(){
 
-    sendCommandString(enter_config, sizeof(enter_config));
-    sendCommandString(set_mode, sizeof(set_mode));
-    if (en_Rumble)
-        sendCommandString(enable_rumble, sizeof(enable_rumble));
-    if (en_Pressures)
-        sendCommandString(set_bytes_large, sizeof(set_bytes_large));
-    sendCommandString(exit_config, sizeof(exit_config));
+    sendCommandString(PS2CmdEnter_config, sizeof(PS2CmdEnter_config));
+    sendCommandString(PS2CmdSet_mode, sizeof(PS2CmdSet_mode));
+    if (PS2FeedbackEnable.en_Rumble)
+        sendCommandString(PS2CmdEnable_rumble, sizeof(PS2CmdEnable_rumble));
+    if (PS2FeedbackEnable.en_Pressures)
+        sendCommandString(PS2CmdSet_bytes_large, sizeof(PS2CmdSet_bytes_large));
+    sendCommandString(PS2CmdExit_config, sizeof(PS2CmdExit_config));
 
 }
 
 
 
 // On pic32, use the set/clr registers to make them atomic...
-inline void  PS2X::CLK_SET(void) {
-*_clk_lport_set |= _clk_mask;
+inline void  PS2_CLK_SET(void) {
+*PS2Flags._clk_lport_set |= PS2Flags._clk_mask;
 }
 
-inline void  PS2X::CLK_CLR(void) {
-    *_clk_lport_clr |= _clk_mask;
+inline void  PS2_CLK_CLR(void) {
+    *PS2Flags._clk_lport_clr |= PS2Flags._clk_mask;
 }
 
-inline void  PS2X::CMD_SET(void) {
-    *_cmd_lport_set |= _cmd_mask;
+inline void  PS2_CMD_SET(void) {
+    *PS2Flags._cmd_lport_set |= PS2Flags._cmd_mask;
 }
 
-inline void  PS2X::CMD_CLR(void) {
-    *_cmd_lport_clr |= _cmd_mask;
+inline void  PS2_CMD_CLR(void) {
+    *PS2Flags._cmd_lport_clr |= PS2Flags._cmd_mask;
 }
 
-inline void  PS2X::ATT_SET(void) {
-    *_att_lport_set |= _att_mask;
+inline void  PS2_ATT_SET(void) {
+    *PS2Flags._att_lport_set |= PS2Flags._att_mask;
 }
 
-inline void PS2X::ATT_CLR(void) {
-    *_att_lport_clr |= _att_mask;
+inline void PS2_ATT_CLR(void) {
+    *PS2Flags._att_lport_clr |= PS2Flags._att_mask;
 }
 
-inline _Bool PS2X::DAT_CHK(void) {
-    return (*_dat_lport & _dat_mask)? true : false;
+inline _Bool PS2_DAT_CHK(void) {
+    return (*PS2Flags._dat_lport & PS2Flags._dat_mask)? true : false;
 
 }
