@@ -102,21 +102,7 @@ typedef struct{
 typedef struct{
     unsigned int last_buttons;
     unsigned int buttons;   
-<<<<<<< HEAD
-} ButtonHistory_t;
-
-/* A struct for holding the commands necessary for transmission and reception of data using the PS2 controller protocol. */
-typedef struct{
-    uint8_t enter_config[5];
-    uint8_t set_mode[9];
-    uint8_t set_bytes_large[9];
-    uint8_t exit_config[9];
-    uint8_t enable_rumble[5];
-    uint8_t type_read[9];
-} PS2Cmds_t;
-=======
 } PS2ButtonHistory_t;
->>>>>>> refs/remotes/origin/main
 
 /* ====================================================================================================================================================== */
 /*                                                      Addition of definitions                                                                           */

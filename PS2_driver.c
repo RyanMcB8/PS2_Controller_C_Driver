@@ -3,33 +3,6 @@
 
 
 /* ==================== Defintion of any static variables. ==================== */
-<<<<<<< HEAD
-static PS2Cmds_t commands;
-static PS2ControllerData_t PS2ControllerData;
-static PS2FeedbackEnable_t PS2FeedbackEnable;
-static PS2Flags_t PS2Flags;
-static ButtonHistory_t ButtonHistory;
-
-commands.enter_config =     {0x01,0x43,0x00,0x01,0x00};
-commands.set_mode =         {0x01,0x44,0x00,0x01,0x03,0x00,0x00,0x00,0x00};
-commands.set_bytes_large =  {0x01,0x4F,0x00,0xFF,0xFF,0x03,0x00,0x00,0x00};
-commands.exit_config =      {0x01,0x43,0x00,0x00,0x5A,0x5A,0x5A,0x5A,0x5A};
-commands.enable_rumble =    {0x01,0x4D,0x00,0x00,0x01};
-commands.type_read =        {0x01,0x45,0x00,0x5A,0x5A,0x5A,0x5A,0x5A,0x5A};
-
-/* ==================== Defintion of functions. ==================== */
-
-_Bool NewButtonState(unsigned int button) {
-    return (((ButtonHistory.last_buttons ^ ButtonHistory.buttons) & button) > 0);
-}
-
-_Bool ButtonPressed(unsigned int button) {
-    return(NewButtonState(button) & Button(button));
-}
-
-_Bool ButtonReleased(unsigned int button) {
-    return((NewButtonState(button)) & ((~ButtonHistory.last_buttons & button) > 0));
-=======
 
 static char PS2CmdEnter_config[] = {0x01,0x43,0x00,0x01,0x00};
 static char PS2CmdSet_mode[] = {0x01,0x44,0x00,0x01,0x03,0x00,0x00,0x00,0x00};
@@ -76,57 +49,25 @@ _Bool ButtonPressed(uint16_t button) {
 
 _Bool ButtonReleased(uint16_t button) {
     return((NewButtonState(button)) & ((~PS2ButtonHistory.last_buttons & button) > 0));
->>>>>>> refs/remotes/origin/main
 }
 
 _Bool Button(uint16_t button) {
-<<<<<<< HEAD
-    return ((~ButtonHistory.buttons & button) > 0);
-=======
     return ((PS2ButtonHistory.buttons & button) > 0);
->>>>>>> refs/remotes/origin/main
 }
 
 
-<<<<<<< HEAD
-uint ButtonDataByte(void) {
-    return (~ButtonHistory.buttons);
-}
-
-uint8_t Analog(uint8_t button) {
-    return PS2data[button];
-}
-
-uint8_t gamepad_shiftinout (uint8_t byte) {
-    unsigned uint8_t tmp = 0;
-    for(i=0;i<8;i++) {
-=======
 unsigned int ButtonDataByte() {
     return (~PS2ButtonHistory.buttons);
 }
-
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
 
 char Analog(char button) {
     return PS2data[button];
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
 
 char _gamepad_shiftinout (char byte) {
     unsigned char tmp = 0;
     for(uint8_t i=0;i<8;i++) {
->>>>>>> refs/remotes/origin/main
 
         if(PS2_CHECK(byte,i)) PS2_CMD_SET();
         else  PS2_CMD_CLR();
@@ -145,29 +86,11 @@ char _gamepad_shiftinout (char byte) {
     return tmp;
 }
 
-<<<<<<< HEAD
-_Bool read_gamepad(_Bool motor1, uint8_t motor2) {
-=======
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
 void read_gamepad() {
     read_gamepad(false, 0x00);
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
 _Bool read_gamepad(_Bool motor1, char motor2) {
->>>>>>> refs/remotes/origin/main
     double temp = millis() - last_read;
 
     if (temp > 1500) //waited to long
@@ -251,18 +174,8 @@ _Bool read_gamepad(_Bool motor1, char motor2) {
     return ((PS2data[1] & 0xf0) == 0x70);
 }
 
-<<<<<<< HEAD
-uint8_t config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, bool pressures, bool rumble) {
-=======
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
 
 char config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, _Bool pressures, _Bool rumble) {
->>>>>>> refs/remotes/origin/main
 
     byte temp[sizeof(type_read)];
 
@@ -381,20 +294,8 @@ char config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, _Bool pr
     return 0; //no error if here
 }
 
-<<<<<<< HEAD
 void sendCommandString(uint8_t* string[], uint8_t len) {
-=======
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
 
-void sendCommandString(char string[], char len) {
-
-
->>>>>>> refs/remotes/origin/main
 #ifdef PS2X_COM_DEBUG
     char temp[len];
     ATT_CLR(); // low enable joystick
@@ -425,13 +326,8 @@ void sendCommandString(char string[], char len) {
 #endif
 }
 
-<<<<<<< HEAD
-uint8_t readType() {
-    if(controller_type == 0x03)
-=======
 char readType() {
     if(PS2ControllerData.controller_type == 0x03)
->>>>>>> refs/remotes/origin/main
         return 1;
     else if(PS2ControllerData.controller_type == 0x01)
         return 2;
@@ -480,33 +376,6 @@ void reconfig_gamepad(){
 
 // On pic32, use the set/clr registers to make them atomic...
 inline void  PS2_CLK_SET(void) {
-<<<<<<< HEAD
-*_clk_lport_set |= _clk_mask;
-}
-
-inline void  PS2_CLK_CLR(void) {
-    *_clk_lport_clr |= _clk_mask;
-}
-
-inline void  PS2_CMD_SET(void) {
-    *_cmd_lport_set |= _cmd_mask;
-}
-
-inline void  PS2_CMD_CLR(void) {
-    *_cmd_lport_clr |= _cmd_mask;
-}
-
-inline void  PS2_ATT_SET(void) {
-    *_att_lport_set |= _att_mask;
-}
-
-inline void PS2_ATT_CLR(void) {
-    *_att_lport_clr |= _att_mask;
-}
-
-inline _Bool PS2_DAT_CHK(void) {
-    return (*_dat_lport & _dat_mask)? true : false;
-=======
 *PS2Flags._clk_lport_set |= PS2Flags._clk_mask;
 }
 
@@ -532,6 +401,5 @@ inline void PS2_ATT_CLR(void) {
 
 inline _Bool PS2_DAT_CHK(void) {
     return (*PS2Flags._dat_lport & PS2Flags._dat_mask)? true : false;
->>>>>>> refs/remotes/origin/main
 
 }
