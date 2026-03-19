@@ -4,83 +4,47 @@
 
 /* ==================== Defintion of any static variables. ==================== */
 static PS2Cmds_t commands;
-commands.enter_config = {0x01,0x43,0x00,0x01,0x00};
-commands.set_mode = {0x01,0x44,0x00,0x01,0x03,0x00,0x00,0x00,0x00};
-commands.set_bytes_large = {0x01,0x4F,0x00,0xFF,0xFF,0x03,0x00,0x00,0x00};
-commands.exit_config = {0x01,0x43,0x00,0x00,0x5A,0x5A,0x5A,0x5A,0x5A};
-commands.enable_rumble = {0x01,0x4D,0x00,0x00,0x01};
-commands.type_read = {0x01,0x45,0x00,0x5A,0x5A,0x5A,0x5A,0x5A,0x5A};
+static PS2ControllerData_t PS2ControllerData;
+static PS2FeedbackEnable_t PS2FeedbackEnable;
+static PS2Flags_t PS2Flags;
+static ButtonHistory_t ButtonHistory;
+
+commands.enter_config =     {0x01,0x43,0x00,0x01,0x00};
+commands.set_mode =         {0x01,0x44,0x00,0x01,0x03,0x00,0x00,0x00,0x00};
+commands.set_bytes_large =  {0x01,0x4F,0x00,0xFF,0xFF,0x03,0x00,0x00,0x00};
+commands.exit_config =      {0x01,0x43,0x00,0x00,0x5A,0x5A,0x5A,0x5A,0x5A};
+commands.enable_rumble =    {0x01,0x4D,0x00,0x00,0x01};
+commands.type_read =        {0x01,0x45,0x00,0x5A,0x5A,0x5A,0x5A,0x5A,0x5A};
 
 /* ==================== Defintion of functions. ==================== */
 
 _Bool NewButtonState(unsigned int button) {
-    return (((last_buttons ^ buttons) & button) > 0);
+    return (((ButtonHistory.last_buttons ^ ButtonHistory.buttons) & button) > 0);
 }
-
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
 
 _Bool ButtonPressed(unsigned int button) {
     return(NewButtonState(button) & Button(button));
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
 _Bool ButtonReleased(unsigned int button) {
-    return((NewButtonState(button)) & ((~last_buttons & button) > 0));
+    return((NewButtonState(button)) & ((~ButtonHistory.last_buttons & button) > 0));
 }
-
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
 
 _Bool Button(uint16_t button) {
-    return ((~buttons & button) > 0);
+    return ((~ButtonHistory.buttons & button) > 0);
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
 
-uint ButtonDataByte() {
-    return (~buttons);
+uint ButtonDataByte(void) {
+    return (~ButtonHistory.buttons);
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
-char Analog(byte button) {
+uint8_t Analog(uint8_t button) {
     return PS2data[button];
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
-char gamepad_shiftinout (char byte) {
-    unsigned char tmp = 0;
+uint8_t gamepad_shiftinout (uint8_t byte) {
+    unsigned uint8_t tmp = 0;
     for(i=0;i<8;i++) {
 
         if(CHK(byte,i)) CMD_SET();
@@ -100,25 +64,7 @@ char gamepad_shiftinout (char byte) {
     return tmp;
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
-void read_gamepad() {
-    read_gamepad(false, 0x00);
-}
-
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
-_Bool read_gamepad(boolean motor1, byte motor2) {
+_Bool read_gamepad(_Bool motor1, uint8_t motor2) {
     double temp = millis() - last_read;
 
     if (temp > 1500) //waited to long
@@ -190,26 +136,19 @@ _Bool read_gamepad(boolean motor1, byte motor2) {
     Serial.println("");	
 #endif
 
-    last_buttons = buttons; //store the previous buttons states
+    ButtonHistory.last_buttons = ButtonHistory.buttons; //store the previous buttons states
 
 #if defined(__AVR__)
     uint16_t * tmp = (uint16_t*)(PS2data+3);
-    buttons = *tmp;
+    ButtonHistory.buttons = *tmp;
 #else
-    buttons =  (uint16_t)(PS2data[4] << 8) + PS2data[3];   //store as one value for multiple functions
+    ButtonHistory.buttons =  (uint16_t)(PS2data[4] << 8) + PS2data[3];   //store as one value for multiple functions
 #endif
     last_read = millis();
     return ((PS2data[1] & 0xf0) == 0x70);
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
-char config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, bool pressures, bool rumble) {
+uint8_t config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, bool pressures, bool rumble) {
 
     byte temp[sizeof(type_read)];
 
@@ -328,16 +267,7 @@ char config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, bool pre
     return 0; //no error if here
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
-void sendCommandString(byte string[], byte len) {
-
-
+void sendCommandString(uint8_t* string[], uint8_t len) {
 #ifdef PS2X_COM_DEBUG
     byte temp[len];
     ATT_CLR(); // low enable joystick
@@ -368,7 +298,7 @@ void sendCommandString(byte string[], byte len) {
 #endif
 }
 
-char readType() {
+uint8_t readType() {
     if(controller_type == 0x03)
         return 1;
     else if(controller_type == 0x01)
@@ -417,31 +347,31 @@ void reconfig_gamepad(){
 
 
 // On pic32, use the set/clr registers to make them atomic...
-inline void  PS2X::CLK_SET(void) {
+inline void  PS2_CLK_SET(void) {
 *_clk_lport_set |= _clk_mask;
 }
 
-inline void  PS2X::CLK_CLR(void) {
+inline void  PS2_CLK_CLR(void) {
     *_clk_lport_clr |= _clk_mask;
 }
 
-inline void  PS2X::CMD_SET(void) {
+inline void  PS2_CMD_SET(void) {
     *_cmd_lport_set |= _cmd_mask;
 }
 
-inline void  PS2X::CMD_CLR(void) {
+inline void  PS2_CMD_CLR(void) {
     *_cmd_lport_clr |= _cmd_mask;
 }
 
-inline void  PS2X::ATT_SET(void) {
+inline void  PS2_ATT_SET(void) {
     *_att_lport_set |= _att_mask;
 }
 
-inline void PS2X::ATT_CLR(void) {
+inline void PS2_ATT_CLR(void) {
     *_att_lport_clr |= _att_mask;
 }
 
-inline _Bool PS2X::DAT_CHK(void) {
+inline _Bool PS2_DAT_CHK(void) {
     return (*_dat_lport & _dat_mask)? true : false;
 
 }
