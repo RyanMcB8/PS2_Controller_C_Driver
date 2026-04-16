@@ -141,13 +141,35 @@ typedef struct{
 /*                                                      Creation of the inline void functions                                                             */
 /* ====================================================================================================================================================== */
 
-inline void PS2_CLK_SET(void);
-inline void PS2_CLK_CLR(void);
-inline void PS2_CMD_SET(void);
-inline void PS2_CMD_CLR(void);
-inline void PS2_ATT_SET(void);
-inline void PS2_ATT_CLR(void);
-inline _Bool PS2_DAT_CHK(void);
+// On pic32, use the set/clr registers to make them atomic...
+inline void  PS2_CLK_SET(PS2Flags_t* flags) {
+*flags->_clk_lport_set |= flags->_clk_mask;
+}
+
+inline void  PS2_CLK_CLR(PS2Flags_t* flags) {
+    *flags->_clk_lport_clr |= flags->_clk_mask;
+}
+
+inline void  PS2_CMD_SET(PS2Flags_t* flags) {
+    *flags->_cmd_lport_set |= flags->_cmd_mask;
+}
+
+inline void  PS2_CMD_CLR(PS2Flags_t* flags) {
+    *flags->_cmd_lport_clr |= flags->_cmd_mask;
+}
+
+inline void  PS2_ATT_SET(PS2Flags_t* flags) {
+    *flags->_att_lport_set |= flags->_att_mask;
+}
+
+inline void PS2_ATT_CLR(PS2Flags_t* flags) {
+    *flags->_att_lport_clr |= flags->_att_mask;
+}
+
+inline _Bool PS2_DAT_CHK(PS2Flags_t* flags) {
+    return (*flags->_dat_lport & flags->_dat_mask)? true : false;
+
+}
 
 /* ====================================================================================================================================================== */
 /*                                                      Addition of function declarations                                                                 */

@@ -357,32 +357,3 @@ void reconfig_gamepad(){
 
 
 
-// On pic32, use the set/clr registers to make them atomic...
-inline void  PS2_CLK_SET(void) {
-*PS2Flags._clk_lport_set |= PS2Flags._clk_mask;
-}
-
-inline void  PS2_CLK_CLR(void) {
-    *PS2Flags._clk_lport_clr |= PS2Flags._clk_mask;
-}
-
-inline void  PS2_CMD_SET(void) {
-    *PS2Flags._cmd_lport_set |= PS2Flags._cmd_mask;
-}
-
-inline void  PS2_CMD_CLR(void) {
-    *PS2Flags._cmd_lport_clr |= PS2Flags._cmd_mask;
-}
-
-inline void  PS2_ATT_SET(void) {
-    *PS2Flags._att_lport_set |= PS2Flags._att_mask;
-}
-
-inline void PS2_ATT_CLR(void) {
-    *PS2Flags._att_lport_clr |= PS2Flags._att_mask;
-}
-
-inline _Bool PS2_DAT_CHK(void) {
-    return (*PS2Flags._dat_lport & PS2Flags._dat_mask)? true : false;
-
-}
