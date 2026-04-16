@@ -29,23 +29,10 @@ _Bool NewButtonState(uint16_t button) {
     return (((PS2ButtonHistory.last_buttons ^ PS2ButtonHistory.buttons) & button) > 0);
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
-
 _Bool ButtonPressed(uint16_t button) {
     return(NewButtonState(button) & Button(button));
 }
 
-/*                #   #  #####  #   #
-                  ##  #  #      #   #
-                  # # #  ###    # # #
-                  #  ##  #      # # #
-                  #   #  #####   # #
-*/
 
 _Bool ButtonReleased(uint16_t button) {
     return((NewButtonState(button)) & ((~PS2ButtonHistory.last_buttons & button) > 0));
@@ -84,10 +71,6 @@ char _gamepad_shiftinout (char byte) {
     PS2_CMD_SET();
     delayMicroseconds(CTRL_BYTE_DELAY);
     return tmp;
-}
-
-void read_gamepad() {
-    read_gamepad(false, 0x00);
 }
 
 _Bool read_gamepad(_Bool motor1, char motor2) {

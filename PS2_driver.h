@@ -18,16 +18,9 @@
 /* ====================================================================================================================================================== */
 /*                                                     Definition of types used                                                                           */
 /* ====================================================================================================================================================== */
-<<<<<<< HEAD
 // #ifndef _Bool
 // #define _Bool boolean
 // #endif
-=======
-/* Boolean data */
-#ifndef _Bool
-#define _Bool boolean
-#endif
->>>>>>> refs/remotes/origin/main
 
 /* 16 bit unsigned integers. */
 #ifndef uint16_t
@@ -68,13 +61,8 @@
 /* A struct which holds data associated with the transmission of data as well as meta data for the controller. */
 typedef struct{
     unsigned long last_read;
-<<<<<<< HEAD
     uint8_t read_delay;
     uint8_t controller_type;
-=======
-    char read_delay;
-    char controller_type;
->>>>>>> refs/remotes/origin/main
 } PS2ControllerData_t;
 
 /* A struct which holds variable to turn on and off the rumble and pressure sensing within the controller. */
