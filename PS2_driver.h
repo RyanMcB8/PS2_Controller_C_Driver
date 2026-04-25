@@ -18,19 +18,6 @@
 /* ====================================================================================================================================================== */
 /*                                                     Definition of types used                                                                           */
 /* ====================================================================================================================================================== */
-// #ifndef _Bool
-// #define _Bool boolean
-// #endif
-
-/* 16 bit unsigned integers. */
-#ifndef uint16_t
-#define uint16_t unsigned int
-#endif
-
-/* 16 bit unsigned integers. */
-#ifndef uint8_t
-#define uint8_t char
-#endif
 
 /* Definition of true. */
 #ifndef true
@@ -45,12 +32,12 @@
 /* THESE DEFINTIONS ARE TEMPORARY AND MUST BE ALTERED TO BE THE CORRECT DELAY FUNCTION FOR THE PLATFORM USED. */
 /* Defintion of delay. */
 #ifndef delayMicroseconds
-#define delayMicroseconds(x) x*10 
+#define delayMicroseconds(x) HAL_Delay_us(x) 
 #endif
 
 /* Defintion of delay. */
 #ifndef delay
-#define delay(x) x*10 
+#define delay(x) HAL_Delay(x) 
 #endif
 
 /* ====================================================================================================================================================== */
@@ -141,34 +128,37 @@ typedef struct{
 /*                                                      Creation of the inline void functions                                                             */
 /* ====================================================================================================================================================== */
 
-// On pic32, use the set/clr registers to make them atomic...
-inline void  PS2_CLK_SET(PS2Flags_t* flags) {
-*flags->_clk_lport_set |= flags->_clk_mask;
+
+// Set / Clear Clock line
+static inline void PS2_CLK_SET(PS2Flags_t* flags) {
+    *flags->_clk_lport_set |= flags->_clk_mask;
 }
 
-inline void  PS2_CLK_CLR(PS2Flags_t* flags) {
+static inline void PS2_CLK_CLR(PS2Flags_t* flags) {
     *flags->_clk_lport_clr |= flags->_clk_mask;
 }
 
-inline void  PS2_CMD_SET(PS2Flags_t* flags) {
+// Set / Clear Command line
+static inline void PS2_CMD_SET(PS2Flags_t* flags) {
     *flags->_cmd_lport_set |= flags->_cmd_mask;
 }
 
-inline void  PS2_CMD_CLR(PS2Flags_t* flags) {
+static inline void PS2_CMD_CLR(PS2Flags_t* flags) {
     *flags->_cmd_lport_clr |= flags->_cmd_mask;
 }
 
-inline void  PS2_ATT_SET(PS2Flags_t* flags) {
+// Set / Clear Attention line
+static inline void PS2_ATT_SET(PS2Flags_t* flags) {
     *flags->_att_lport_set |= flags->_att_mask;
 }
 
-inline void PS2_ATT_CLR(PS2Flags_t* flags) {
+static inline void PS2_ATT_CLR(PS2Flags_t* flags) {
     *flags->_att_lport_clr |= flags->_att_mask;
 }
 
-inline _Bool PS2_DAT_CHK(PS2Flags_t* flags) {
-    return (*flags->_dat_lport & flags->_dat_mask)? true : false;
-
+// Read Data line
+static inline _Bool PS2_DAT_CHK(PS2Flags_t* flags) {
+    return (*flags->_dat_lport & flags->_dat_mask) ? true : false;
 }
 
 /* ====================================================================================================================================================== */
@@ -185,12 +175,6 @@ _Bool NewButtonState(uint16_t button);
  *  @retval Returns a boolean value indicating if the button referenced has changed state.
  */
 _Bool ButtonPressed(uint16_t button);
-
-/** @brief A function that returns true when the one of the buttons has changed state. Either from on to off, or off to on.
- *  @param button The button which is being tested.
- *  @retval A value of type boolean confirming if there has been a change in state.
- */
-extern _Bool NewButtonState(unsigned int button);
 
 /** @brief A function which checks if a specific button has been pressed.
  *  @param button The button which is being tested.
@@ -253,7 +237,7 @@ uint8_t config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, _Bool
  *  @param string A pointer to the array of uint8_tacters which should be transmitted.
  *  @param len The length of the array that is being transmitted.
  */
-void sendCommandString(uint8_t* string[], uint8_t len);
+void sendCommandString(uint8_t* string, uint8_t len);
 
 /** @brief A function which checks which type of controller is connected. It can detect if it is a dualshock controller or a guitar or not compatible.
  *  @retval The type of controller detected: 0 is not compatible, 1 is guitar and 2 is the dualshock controller.
@@ -275,10 +259,6 @@ _Bool enablePressures();
  *
  */
 void reconfig_gamepad();
-
-
-_Bool Button(uint16_t);
-
 
 
 #endif /* End of recurssion prevention. */
