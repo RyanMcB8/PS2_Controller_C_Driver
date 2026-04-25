@@ -1,5 +1,5 @@
 /** @file   PS2_driver.h
- *  @author Ryan McBride    @RyanMcB8
+ *  @author Ryan McBride   
  *  @brief  A header file defining all the necessary types for the transmission of data using the PS2 controller's protocol.
  *          This also features all the necessary function declarations so that the functions may be called within the main program.
  */
@@ -58,26 +58,33 @@ typedef struct{
     _Bool en_Pressures;
 }  PS2FeedbackEnable_t;
 
-/* A struct that holds all the necessary flags and masks for the transmission of the data. */
+/* A struct that holds all the necessary port and pin definitions of each connection to the controller. */
 typedef struct{
-    uint16_t 				_clk_mask; 
-    volatile uint32_t *		_clk_lport_set;
-    volatile uint32_t *		_clk_lport_clr;
-    uint16_t 				_cmd_mask; 
-    volatile uint32_t *		_cmd_lport_set;
-    volatile uint32_t *		_cmd_lport_clr;
-    uint16_t 				_att_mask; 
-    volatile uint32_t *		_att_lport_set;
-    volatile uint32_t *		_att_lport_clr;
-    uint16_t 				_dat_mask; 
-    volatile uint32_t *		_dat_lport;
-} PS2Flags_t;
+    uint16_t                    clk_GPIO_Pin; 
+    const GPIO_TypeDef *	    clk_GPIO_Port;
+    uint16_t                    cmd_GPIO_Pin; 
+    const GPIO_TypeDef *	    cmd_GPIO_Port;
+    uint16_t                    att_GPIO_Pin; 
+    const GPIO_TypeDef *	    att_GPIO_Port;
+    uint16_t                    dat_GPIO_Pin; 
+    const GPIO_TypeDef *	    dat_GPIO_Port;
+} PS2Pins_t;
 
 /* A struct which holds a memory of the button status' as well as the new status' which may be compared. */
 typedef struct{
     unsigned int last_buttons;
     unsigned int buttons;   
 } PS2ButtonHistory_t;
+
+/*  A struct to store all the states of the controller. */
+typedef struct{
+    PS2Pins_t pins;
+    PS2FeedbackEnable_t feedback;
+    PS2ButtonHistory_t buttonHistory;
+    PS2ControllerData_t data;
+    unsigned char PS2data[21];
+} PS2ControllerStates_t;
+
 
 /* ====================================================================================================================================================== */
 /*                                                      Addition of definitions                                                                           */
@@ -129,36 +136,60 @@ typedef struct{
 /* ====================================================================================================================================================== */
 
 
-// Set / Clear Clock line
-static inline void PS2_CLK_SET(PS2Flags_t* flags) {
-    *flags->_clk_lport_set |= flags->_clk_mask;
+/** @brief                  A function to set the clock pin high.
+ *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
+ *                          controller.
+ */
+static inline void PS2_CLK_SET(PS2ControllerStates_t *controller) {
+    HAL_GPIO_WritePin(controller->pins.clk_GPIO_Port, controller->pins.clk_GPIO_Pin, GPIO_PIN_SET);
 }
 
-static inline void PS2_CLK_CLR(PS2Flags_t* flags) {
-    *flags->_clk_lport_clr |= flags->_clk_mask;
+/** @brief                  A function to set the clock pin low.
+ *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
+ *                          controller.
+ */
+static inline void PS2_CLK_CLR(PS2ControllerStates_t *controller) {
+    HAL_GPIO_WritePin(controller->pins.clk_GPIO_Port, controller->pins.clk_GPIO_Pin, GPIO_PIN_RESET);
 }
 
-// Set / Clear Command line
-static inline void PS2_CMD_SET(PS2Flags_t* flags) {
-    *flags->_cmd_lport_set |= flags->_cmd_mask;
+/** @brief                  A function to set the command pin high.
+ *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
+ *                          controller.
+ */
+static inline void PS2_CMD_SET(PS2ControllerStates_t *controller) {
+    HAL_GPIO_WritePin(controller->pins.cmd_GPIO_Port, controller->pins.cmd_GPIO_Pin, GPIO_PIN_SET);
 }
 
-static inline void PS2_CMD_CLR(PS2Flags_t* flags) {
-    *flags->_cmd_lport_clr |= flags->_cmd_mask;
+/** @brief                  A function to set the command pin low.
+ *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
+ *                          controller.
+ */
+static inline void PS2_CMD_CLR(PS2ControllerStates_t *controller) {
+    HAL_GPIO_WritePin(controller->pins.cmd_GPIO_Port, controller->pins.cmd_GPIO_Pin, GPIO_PIN_RESET);
 }
 
-// Set / Clear Attention line
-static inline void PS2_ATT_SET(PS2Flags_t* flags) {
-    *flags->_att_lport_set |= flags->_att_mask;
+/** @brief                  A function to set the attention pin high.
+ *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
+ *                          controller.
+ */
+static inline void PS2_ATT_SET(PS2ControllerStates_t *controller) {
+    HAL_GPIO_WritePin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin, GPIO_PIN_SET);
 }
 
-static inline void PS2_ATT_CLR(PS2Flags_t* flags) {
-    *flags->_att_lport_clr |= flags->_att_mask;
+/** @brief                  A function to set the attention pin low.
+ *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
+ *                          controller.
+ */
+static inline void PS2_ATT_CLR(PS2ControllerStates_t *controller) {
+    HAL_GPIO_WritePin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin, GPIO_PIN_RESET);
 }
 
-// Read Data line
-static inline _Bool PS2_DAT_CHK(PS2Flags_t* flags) {
-    return (*flags->_dat_lport & flags->_dat_mask) ? true : false;
+/** @brief                  A function to read the value of the data pin.
+ *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
+ *                          controller.
+ */
+static inline _Bool PS2_DAT_CHK(PS2ControllerStates_t *controller) {
+    return HAL_GPIO_ReadPin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin)
 }
 
 /* ====================================================================================================================================================== */
@@ -174,25 +205,25 @@ _Bool NewButtonState(uint16_t button);
  *  @param button An unsigned 16 bit integer referencing the button ID defined in "PS2_driver.h".
  *  @retval Returns a boolean value indicating if the button referenced has changed state.
  */
-_Bool ButtonPressed(uint16_t button);
+_Bool ButtonPressed(PS2ControllerStates_t *controller, uint16_t button);
 
 /** @brief A function which checks if a specific button has been pressed.
  *  @param button The button which is being tested.
  *  @retval A value of type boolean indiciating whether the button has been pressed or not.
  */
-extern _Bool ButtonPressed(unsigned int button);
+extern _Bool ButtonPressed(PS2ControllerStates_t *controller, uint16_t button);
 
 /** @brief A function which can check if a specific button has been released.
  *  @param button The button which is being tested.
  *  @retval A value of type boolean indicating if the button has been relesed or not.
  */
-extern _Bool ButtonReleased(unsigned int button);
+extern _Bool ButtonReleased(PS2ControllerStates_t *controller, uint16_t button);
 
 /** @brief A function which returns the current state of the button which is being tested. 1 if the button is being pressed, otherwise 0.
  *  @param button The button which is being pressed.
  *  @retval A value of type boolean describing the state of the button.
  */
-extern _Bool Button(uint16_t button);
+extern _Bool Button(PS2ControllerStates_t *controller, uint16_t button) ;
 
 /** @brief A function which returns the button data as its byte form.
  *  @retval The binary representation of the current button states.
