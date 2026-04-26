@@ -29,9 +29,9 @@
 #define false 0
 #endif
 
-// #ifdef TEST_PS2_CONTROLLER
+#ifdef TEST_PS2_CONTROLLER
 #include "STM32_PS2_Example.h"
-// #endif
+#endif
 
 /* THESE DEFINTIONS ARE TEMPORARY AND MUST BE ALTERED TO BE THE CORRECT DELAY FUNCTION FOR THE PLATFORM USED. */
 /* Defintion of delay. */
