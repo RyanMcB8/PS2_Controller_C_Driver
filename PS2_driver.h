@@ -29,10 +29,14 @@
 #define false 0
 #endif
 
+// #ifdef TEST_PS2_CONTROLLER
+#include "STM32_PS2_Example.h"
+// #endif
+
 /* THESE DEFINTIONS ARE TEMPORARY AND MUST BE ALTERED TO BE THE CORRECT DELAY FUNCTION FOR THE PLATFORM USED. */
 /* Defintion of delay. */
 #ifndef delayMicroseconds
-#define delayMicroseconds(x) HAL_Delay_us(x) 
+#define delayMicroseconds(x) x 
 #endif
 
 /* Defintion of delay. */
@@ -47,7 +51,7 @@
 
 /* A struct which holds data associated with the transmission of data as well as meta data for the controller. */
 typedef struct{
-    unsigned long last_read;
+    uint64_t last_read;
     uint8_t read_delay;
     uint8_t controller_type;
 } PS2ControllerData_t;
@@ -189,7 +193,7 @@ static inline void PS2_ATT_CLR(PS2ControllerStates_t *controller) {
  *                          controller.
  */
 static inline _Bool PS2_DAT_CHK(PS2ControllerStates_t *controller) {
-    return HAL_GPIO_ReadPin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin)
+    return HAL_GPIO_ReadPin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin);
 }
 
 /* ====================================================================================================================================================== */
@@ -199,19 +203,13 @@ static inline _Bool PS2_DAT_CHK(PS2ControllerStates_t *controller) {
  *  @param button An unsigned 16 bit integer referencing the button ID defined in "PS2_driver.h"
  *  @retval Boolean value indicating if there has been a change in button states from the last time it was run.
 */
-_Bool NewButtonState(uint16_t button);
+_Bool NewButtonState(PS2ControllerStates_t *controller, uint16_t button);
 
 /** @brief A function that checks if the button has been pressed.
  *  @param button An unsigned 16 bit integer referencing the button ID defined in "PS2_driver.h".
  *  @retval Returns a boolean value indicating if the button referenced has changed state.
  */
 _Bool ButtonPressed(PS2ControllerStates_t *controller, uint16_t button);
-
-/** @brief A function which checks if a specific button has been pressed.
- *  @param button The button which is being tested.
- *  @retval A value of type boolean indiciating whether the button has been pressed or not.
- */
-extern _Bool ButtonPressed(PS2ControllerStates_t *controller, uint16_t button);
 
 /** @brief A function which can check if a specific button has been released.
  *  @param button The button which is being tested.
@@ -228,20 +226,23 @@ extern _Bool Button(PS2ControllerStates_t *controller, uint16_t button) ;
 /** @brief A function which returns the button data as its byte form.
  *  @retval The binary representation of the current button states.
  */
-unsigned int ButtonDataByte(void);
+unsigned int ButtonDataByte(PS2ControllerStates_t *controller);
 
 
 /** @brief A function which returns the ADC value for the specified analogue button with an 8-bit resolution.
  *  @param button The button in which is being tested.
  *  @retval The analogue value of the button being tested in 8 bit precision.
  */
-uint8_t Analog(uint8_t button);
+uint8_t Analogue(PS2ControllerStates_t *controller, uint8_t button);
 
-/** @brief I am actually not sure what this function does yet.
- *  @param byte Not sure about this either.
- *  @retval Nor this.
+/** @brief  Bit banging the data through to the controller from the mcu.
+ *  @details    This is not necessary if SPI is implemented properly instead. 
+ *              This is duplex communication with the shift registers so data
+ *              is being both transmitted and received.
+ *  @param byte The data byte which should be transmitted.
+ *  @retval     Returns the received byte.
  */
-uint8_t gamepad_shiftinout (uint8_t byte);
+uint8_t gamepad_shiftinout (PS2ControllerStates_t *controller, uint8_t byte);
 
 /** @brief A function which reads the value of the gamepad buttons and saves their values to the `buttons` variable. 
  *  This function is also responsible for controlling the internal motors for vibration feedback.
@@ -249,7 +250,7 @@ uint8_t gamepad_shiftinout (uint8_t byte);
  *  @param motor2 The 8-bit resolution value for how much power should be supplied to the larger motor.
  *  @retval I am not sure what exactly is being returned for this function. Need to run more tests first.
  */
-_Bool read_gamepad(_Bool motor1, uint8_t motor2);
+_Bool read_gamepad(PS2ControllerStates_t *controller, _Bool motor1, uint8_t motor2);
 
 /** @brief A function responsible for initialising the controller by transmitting the necessary
  *         values to address the correct registers holding parameters for enabling the rumble etc. 
@@ -262,34 +263,34 @@ _Bool read_gamepad(_Bool motor1, uint8_t motor2);
  *  @retval The type of controller which has been detected.
  * 
  */
-uint8_t config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, _Bool pressures, _Bool rumble) ;
+uint8_t config_gamepad(PS2ControllerStates_t *controller, _Bool pressures, _Bool rumble) ;
 
 /** @brief A function which can transmit a string of uint8_tacters of any length to the controller.
  *  @param string A pointer to the array of uint8_tacters which should be transmitted.
  *  @param len The length of the array that is being transmitted.
  */
-void sendCommandString(uint8_t* string, uint8_t len);
+void sendCommandString(PS2ControllerStates_t *controller, uint8_t* string, uint8_t len);
 
 /** @brief A function which checks which type of controller is connected. It can detect if it is a dualshock controller or a guitar or not compatible.
  *  @retval The type of controller detected: 0 is not compatible, 1 is guitar and 2 is the dualshock controller.
  */
-uint8_t readType();
+uint8_t readType(PS2ControllerStates_t *controller);
 
 /** @brief A function which transmits a command to enable the rumble setting on the controller.
  * 
  */
-void enableRumble();
+void enableRumble(PS2ControllerStates_t *controller);
 
 /** @brief A function which transmits a command to enable the pressure settings on the controller.
  * 
  */
-_Bool enablePressures();
+_Bool enablePressures(PS2ControllerStates_t *controller);
 
 /** @brief A function responsible for reconfiguring the gamepad. This transmits the most 
  *  recent rumble and pressure settings as well as other gamepad options previously selected. 
  *
  */
-void reconfig_gamepad();
+void reconfig_gamepad(PS2ControllerStates_t *controller);
 
 
 #endif /* End of recurssion prevention. */
