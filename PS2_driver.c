@@ -107,159 +107,106 @@ _Bool read_gamepad(PS2ControllerStates_t *controller, _Bool motor1, char motor2)
     return ((controller->PS2data[1] & 0xf0) == 0x70);
 }
 
-char config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, _Bool pressures, _Bool rumble) {
+char config_gamepad(PS2ControllerStates_t *controller, uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, _Bool pressures, _Bool rumble) {
+    uint8_t temp[9]; /* Reading response. */
 
-    byte temp[sizeof(type_read)];
-
-#ifdef __AVR__
-    _clk_mask = digitalPinToBitMask(clk);
-    _clk_oreg = portOutputRegister(digitalPinToPort(clk));
-    _cmd_mask = digitalPinToBitMask(cmd);
-    _cmd_oreg = portOutputRegister(digitalPinToPort(cmd));
-    _att_mask = digitalPinToBitMask(att);
-    _att_oreg = portOutputRegister(digitalPinToPort(att));
-    _dat_mask = digitalPinToBitMask(dat);
-    _dat_ireg = portInputRegister(digitalPinToPort(dat));
-#else
-
-    uint32_t            lport;                   // Port number for this pin
-    _clk_mask = digitalPinToBitMask(clk); 
-    lport = digitalPinToPort(clk);
-    _clk_lport_set = portOutputRegister(lport) + 2;
-    _clk_lport_clr = portOutputRegister(lport) + 1;
-
-    _cmd_mask = digitalPinToBitMask(cmd); 
-    lport = digitalPinToPort(cmd);
-    _cmd_lport_set = portOutputRegister(lport) + 2;
-    _cmd_lport_clr = portOutputRegister(lport) + 1;
-
-    _att_mask = digitalPinToBitMask(att); 
-    lport = digitalPinToPort(att);
-    _att_lport_set = portOutputRegister(lport) + 2;
-    _att_lport_clr = portOutputRegister(lport) + 1;
-
-    _dat_mask = digitalPinToBitMask(dat); 
-    _dat_lport = portInputRegister(digitalPinToPort(dat));
-
-#endif  
-
-    pinMode(clk, OUTPUT); //configure ports
-    pinMode(att, OUTPUT);
-    pinMode(cmd, OUTPUT);
-    pinMode(dat, INPUT);
-
-#if defined(__AVR__)
-    digitalWrite(dat, HIGH); //enable pull-up 
-#endif
-
-    CMD_SET(); // SET(*_cmd_oreg,_cmd_mask);
-    CLK_SET();
-
-    //new error checking. First, read gamepad a few times to see if it's talking
-    read_gamepad();
-    read_gamepad();
-
-    //see if it talked
-    if(PS2data[1] != 0x41 && PS2data[1] != 0x73 && PS2data[1] != 0x79){ //see if mode came back. If still anything but 41, 73 or 79, then it's not talking
-
-        return 1; //return error code 1
+    /*  Checking that the controller is responsive. */
+    if (read_gamepad(controller, 0, 0) != 0 || read_gamepad(controller, 0, 0) != 0) {
+        return 1; /*    Controller is not responsive - exit. */
     }
 
-    //try setting mode, increasing delays if need be. 
-    read_delay = 1;
-
-    for(int y = 0; y <= 10; y++)
-    {
-        sendCommandString(enter_config, sizeof(enter_config)); //start config run
-
-        //read type
-        delayMicroseconds(CTRL_BYTE_DELAY);
-
-        CMD_SET();
-        CLK_SET();
-        ATT_CLR(); // low enable joystick
-
-        delayMicroseconds(CTRL_BYTE_DELAY);
-
-        for (int i = 0; i<9; i++) {
-            temp[i] = _gamepad_shiftinout(type_read[i]);
-        }
-
-        ATT_SET(); // HI disable joystick
-
-        controller_type = temp[3];
-
-        sendCommandString(set_mode, sizeof(set_mode));
-        if(rumble){ sendCommandString(enable_rumble, sizeof(enable_rumble)); en_Rumble = true; }
-        if(pressures){ sendCommandString(set_bytes_large, sizeof(set_bytes_large)); en_Pressures = true; }
-        sendCommandString(exit_config, sizeof(exit_config));
-
-        read_gamepad();
-
-        if(pressures){
-            if(PS2data[1] == 0x79)
-                break;
-            if(PS2data[1] == 0x73)
-                return 3;
-        }
-
-        if(PS2data[1] == 0x73)
-            break;
-
-        if(y == 10){
-            return 2; //exit function with error
-        }
-
-        read_delay += 1; //add 1ms to read_delay
+    /*  Ensuring that the response mode corresponds to one of the 3 valid options. */
+    if (PS2data[1] != 0x41 && PS2data[1] != 0x73 && PS2data[1] != 0x79) {
+        return 1; // Error if mode is not correct
     }
 
-    return 0; //no error if here
+    /*  Running this script until the controller is sucessfully configured or the maximum number of reattempts is reached. */
+    for (int attempt = 0; attempt <= 10; attempt++) {
+        /* Enter configuration mode. */
+        sendCommandString(PS2CmdEnter_config, sizeof(PS2CmdEnter_config));
+
+        /* Reading the gamepad type. */
+        HAL_GPIO_WritePin(controller->pins->att_GPIO_Port, controller->pins->att_GPIO_Pin, GPIO_PIN_RESET);
+        delayMicroseconds(CTRL_BYTE_DELAY);
+
+        /*  Bit banging the command type read. */
+        for (int i = 0; i < sizeof(PS2CmdType_read); i++) {
+            temp[i] = gamepad_shiftinout(PS2CmdType_read[i]);
+        }
+
+        HAL_GPIO_WritePin(controller->pins->att_GPIO_Port, controller->pins->att_GPIO_Pin, GPIO_PIN_SET); /*    Disabling gamepad. */
+
+        controller->data.controller_type = temp[3];
+
+        /*  Setting the rumble and pressures to be enabled/disabled accordingly. */
+        sendCommandString(PS2CmdSet_mode, sizeof(PS2CmdSet_mode));
+        if (rumble) {
+            sendCommandString(PS2CmdEnable_rumble, sizeof(PS2CmdEnable_rumble));
+            controller->feedback.en_Rumble = true;
+        }
+
+        if (pressures) {
+            sendCommandString(PS2CmdSet_bytes_large, sizeof(PS2CmdSet_bytes_large));
+            controller->feedback.en_Pressures = true;
+        }
+
+        /*  Configuration complete. */
+        sendCommandString(PS2CmdExit_config, sizeof(PS2CmdExit_config));
+
+        /*  Reading the gamepad to ensure success. */
+        read_gamepad(controller, 0, 0);
+
+        if (pressures) {
+            if (PS2data[1] == 0x79) break;  // Successful, pressures enabled
+            if (PS2data[1] == 0x73) return 3;  // Pressure mode error
+        }
+
+        if (PS2data[1] == 0x73) break;  // Success with no pressures
+
+        // If we've reached the maximum attempts, return error
+        if (attempt == 10) {
+            return 2; // Configuration failed after 10 attempts
+        }
+
+        read_delay += 1; // Increase delay for the next attempt
+    }
+
+    return 0;
 }
 
-void sendCommandString(uint8_t* string[], uint8_t len) {
+void sendCommandString(PS2ControllerStates_t *controller, uint8_t* string, uint8_t len) {
 
-#ifdef PS2X_COM_DEBUG
-    char temp[len];
-    ATT_CLR(); // low enable joystick
-    delayMicroseconds(CTRL_BYTE_DELAY);
-
-    for (uint8_t y=0; y < len; y++)
-        temp[y] = _gamepad_shiftinout(string[y]);
-
-    ATT_SET(); //high disable joystick  
-    delay(read_delay);                  //wait a few
-
-
-#else
     PS2_ATT_CLR(); // low enable joystick
+
+    /*  Bit banging again. */
     for (uint8_t y=0; y < len; y++)
-        _gamepad_shiftinout(string[y]);
+        gamepad_shiftinout(string[y]);
 
     PS2_ATT_SET(); //high disable joystick  
-    delay(PS2ControllerData.read_delay);                  //wait a few
-#endif
+    delay(controller->data.read_delay);
 }
 
-char readType() {
-    if(PS2ControllerData.controller_type == 0x03)
+char readType(PS2ControllerStates_t *controller) {
+    if(controller->data.controller_type == 0x03)
         return 1;
-    else if(PS2ControllerData.controller_type == 0x01)
+    else if(controller->data.controller_type == 0x01)
         return 2;
 
     return 0;
 }
 
-void enableRumble() {
+void enableRumble(PS2ControllerStates_t *controller) {
 
     sendCommandString(PS2CmdEnter_config, sizeof(PS2CmdEnter_config));
     sendCommandString(PS2CmdEnable_rumble, sizeof(PS2CmdEnable_rumble));
     sendCommandString(PS2CmdExit_config, sizeof(PS2CmdExit_config));
-    PS2FeedbackEnable.en_Rumble = true;
+    controller->feedback.en_Rumble = true;
 
 }
 
-_Bool enablePressures() {
+_Bool enablePressures(PS2ControllerStates_t *controller) {
 
+    /*  Entering configuration mode.*/
     sendCommandString(PS2CmdEnter_config, sizeof(PS2CmdEnter_config));
     sendCommandString(PS2CmdSet_bytes_large, sizeof(PS2CmdSet_bytes_large));
     sendCommandString(PS2CmdExit_config, sizeof(PS2CmdExit_config));
@@ -267,21 +214,29 @@ _Bool enablePressures() {
     read_gamepad();
     read_gamepad();
 
-    if(PS2data[1] != 0x79)
+    /*  Ensuring that valid data was returned and that there was no error. */
+    if(PS2data[1] != 0x79){
         return false;
+    }
 
-    PS2FeedbackEnable.en_Pressures = true;
+    controller->feedback.en_Pressures = true;
     return true;
 }
 
-void reconfig_gamepad(){
-
+void reconfig_gamepad(PS2ControllerStates_t *controller){
+    /*  Sending the command to enter configuration mode instead of analogue. */
     sendCommandString(PS2CmdEnter_config, sizeof(PS2CmdEnter_config));
     sendCommandString(PS2CmdSet_mode, sizeof(PS2CmdSet_mode));
-    if (PS2FeedbackEnable.en_Rumble)
+    
+    /*  Enabling rumble if it has been enabled in settings. */
+    if (controller->feedback.en_Rumble){
         sendCommandString(PS2CmdEnable_rumble, sizeof(PS2CmdEnable_rumble));
-    if (PS2FeedbackEnable.en_Pressures)
+    }
+
+    /*  Enabling pressures if it has been enabled in settings. */
+    if (controller->feedback.en_Pressures){
         sendCommandString(PS2CmdSet_bytes_large, sizeof(PS2CmdSet_bytes_large));
+    }
     sendCommandString(PS2CmdExit_config, sizeof(PS2CmdExit_config));
 
 }
