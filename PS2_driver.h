@@ -31,12 +31,14 @@
 
 #ifdef TEST_PS2_CONTROLLER
 #include "STM32_PS2_Example.h"
+#else
+#include "main.h"
 #endif
 
 /* THESE DEFINTIONS ARE TEMPORARY AND MUST BE ALTERED TO BE THE CORRECT DELAY FUNCTION FOR THE PLATFORM USED. */
 /* Defintion of delay. */
 #ifndef delayMicroseconds
-#define delayMicroseconds(x) x 
+#define delayMicroseconds(x) for(uint16_t tempWait=0; tempWait < (x*100); tempWait++){} 
 #endif
 
 /* Defintion of delay. */
@@ -65,13 +67,13 @@ typedef struct{
 /* A struct that holds all the necessary port and pin definitions of each connection to the controller. */
 typedef struct{
     uint16_t                    clk_GPIO_Pin; 
-    const GPIO_TypeDef *	    clk_GPIO_Port;
+    GPIO_TypeDef *	    clk_GPIO_Port;
     uint16_t                    cmd_GPIO_Pin; 
-    const GPIO_TypeDef *	    cmd_GPIO_Port;
+    GPIO_TypeDef *	    cmd_GPIO_Port;
     uint16_t                    att_GPIO_Pin; 
-    const GPIO_TypeDef *	    att_GPIO_Port;
+    GPIO_TypeDef *	    att_GPIO_Port;
     uint16_t                    dat_GPIO_Pin; 
-    const GPIO_TypeDef *	    dat_GPIO_Port;
+    GPIO_TypeDef *	    dat_GPIO_Port;
 } PS2Pins_t;
 
 /* A struct which holds a memory of the button status' as well as the new status' which may be compared. */
@@ -94,9 +96,9 @@ typedef struct{
 /*                                                      Addition of definitions                                                                           */
 /* ====================================================================================================================================================== */
 
-#define CTRL_CLK        6 //5
-#define CTRL_CLK_HIGH   6 //5
-#define CTRL_BYTE_DELAY 5 //4
+#define CTRL_CLK        6
+#define CTRL_CLK_HIGH   6
+#define CTRL_BYTE_DELAY 5
 
 /* Home buttons */
 #define PS_SELECT      0x0001
