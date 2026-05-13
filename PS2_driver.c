@@ -31,7 +31,6 @@ _Bool Button(PS2ControllerStates_t *controller, uint16_t button) {
     return ((controller->buttonHistory.buttons & button) > 0);
 }
 
-
 unsigned int ButtonDataByte(PS2ControllerStates_t *controller) {
     /*  Returning the inverted button mask. */
     return (~controller->buttonHistory.buttons);
@@ -44,6 +43,7 @@ uint8_t Analogue(PS2ControllerStates_t *controller, uint8_t button) {
 uint8_t gamepad_shiftinout(PS2ControllerStates_t *controller, uint8_t byte) {
     uint8_t tmp = 0;
 
+#ifndef PS2_SPI
     for(uint8_t i = 0; i < 8; i++) {
         /*  Matching the CMD pin state to the bit in byte index. */
         PS2_CHECK(byte, i) ? PS2_CMD_SET(controller) : PS2_CMD_CLR(controller);
@@ -58,7 +58,12 @@ uint8_t gamepad_shiftinout(PS2ControllerStates_t *controller, uint8_t byte) {
     }
 
     PS2_CMD_SET(controller);  /*  Transmission complete. */
-    delayMicroseconds(CTRL_BYTE_DELAY);  
+    delayMicroseconds(CTRL_BYTE_DELAY);
+#else
+
+    HAL_SPI_TransmitReceive(controller->handle, &byte, &tmp, 1, HAL_MAX_DELAY);
+
+#endif
     return tmp;  /* Returning the received byte. */
 }
 
@@ -71,16 +76,19 @@ _Bool read_gamepad(PS2ControllerStates_t *controller, _Bool motor1, uint8_t moto
     if(motor2 != 0x00)
         /*  Scaling the input motor value to be between the minimum value for the motor to move
             and the maximum to have a linear relationship instead of an initial step. */
-        motor2 = (motor2 * (0xFF - 0x40) / 255) + 0x40;
+        motor2 = ((motor2 * (0xFF - 0x40)) / 255) + 0x40;
 
     uint8_t dword[9] = {0x01,0x42,0,motor1,motor2,0,0,0,0};
     uint8_t dword2[12] = {0};
 
+#ifndef PS2_SPI
     PS2_CMD_SET(controller);
     PS2_CLK_SET(controller);
+    delayMicroseconds(CTRL_BYTE_DELAY);
+#endif
+    
     PS2_ATT_CLR(controller); /* low enable joystick */
 
-    delayMicroseconds(CTRL_BYTE_DELAY);
 
     /*  Transmitting the message by bitbashing instead of SPI protocol. */
     for (int i = 0; i<sizeof(dword); i++) {
@@ -106,7 +114,7 @@ _Bool read_gamepad(PS2ControllerStates_t *controller, _Bool motor1, uint8_t moto
     controller->buttonHistory.buttons =  (uint16_t)(controller->PS2data[4] << 8) + controller->PS2data[3];   //store as one value for multiple functions
 
     controller->data.last_read = HAL_GetTick();
-    return ((controller->PS2data[1] & 0xf0) == 0x70);
+    return ((controller->PS2data[1] & 0xf0) != 0x70);
 }
 
 uint8_t config_gamepad(PS2ControllerStates_t *controller, _Bool pressures, _Bool rumble) {
@@ -128,7 +136,7 @@ uint8_t config_gamepad(PS2ControllerStates_t *controller, _Bool pressures, _Bool
         sendCommandString(controller, PS2CmdEnter_config, sizeof(PS2CmdEnter_config));
 
         /* Reading the gamepad type. */
-        HAL_GPIO_WritePin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin, GPIO_PIN_RESET);
+        PS2_ATT_CLR(controller);
         delayMicroseconds(CTRL_BYTE_DELAY);
 
         /*  Bit banging the command type read. */
@@ -136,7 +144,7 @@ uint8_t config_gamepad(PS2ControllerStates_t *controller, _Bool pressures, _Bool
             temp[i] = gamepad_shiftinout(controller, PS2CmdType_read[i]);
         }
 
-        HAL_GPIO_WritePin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin, GPIO_PIN_SET); /*    Disabling gamepad. */
+        PS2_ATT_SET(controller); /*    Disabling gamepad. */
 
         controller->data.controller_type = temp[3];
 
