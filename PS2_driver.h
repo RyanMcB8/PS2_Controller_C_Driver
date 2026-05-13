@@ -18,7 +18,7 @@
 /* ====================================================================================================================================================== */
 /*                                                     Definition of types used                                                                           */
 /* ====================================================================================================================================================== */
-
+#define PS2_SPI
 /* Definition of true. */
 #ifndef true
 #define true 1
@@ -37,6 +37,7 @@
 
 /* THESE DEFINTIONS ARE TEMPORARY AND MUST BE ALTERED TO BE THE CORRECT DELAY FUNCTION FOR THE PLATFORM USED. */
 /* Defintion of delay. */
+#ifndef PS2_SPI
 #ifndef delayMicroseconds
 #define delayMicroseconds(x) for(uint16_t tempWait=0; tempWait < (x*100); tempWait++){} 
 #endif
@@ -44,6 +45,7 @@
 /* Defintion of delay. */
 #ifndef delay
 #define delay(x) HAL_Delay(x) 
+#endif
 #endif
 
 /* ====================================================================================================================================================== */
@@ -64,6 +66,7 @@ typedef struct{
     _Bool en_Pressures;
 }  PS2FeedbackEnable_t;
 
+#ifndef PS2_SPI
 /* A struct that holds all the necessary port and pin definitions of each connection to the controller. */
 typedef struct{
     uint16_t                    clk_GPIO_Pin; 
@@ -75,6 +78,7 @@ typedef struct{
     uint16_t                    dat_GPIO_Pin; 
     GPIO_TypeDef *	    dat_GPIO_Port;
 } PS2Pins_t;
+#endif
 
 /* A struct which holds a memory of the button status' as well as the new status' which may be compared. */
 typedef struct{
@@ -84,7 +88,13 @@ typedef struct{
 
 /*  A struct to store all the states of the controller. */
 typedef struct{
+#ifndef PS2_SPI
     PS2Pins_t pins;
+#else
+    SPI_HandleTypeDef* handle;
+    uint16_t        ChipSelect_GPIO_Pin;
+    GPIO_TypeDef*   ChipSelect_GPIO_Port;
+#endif
     PS2FeedbackEnable_t feedback;
     PS2ButtonHistory_t buttonHistory;
     PS2ControllerData_t data;
@@ -141,7 +151,7 @@ typedef struct{
 /*                                                      Creation of the inline void functions                                                             */
 /* ====================================================================================================================================================== */
 
-
+#ifndef PS2_SPI
 /** @brief                  A function to set the clock pin high.
  *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
  *                          controller.
@@ -174,12 +184,19 @@ static inline void PS2_CMD_CLR(PS2ControllerStates_t *controller) {
     HAL_GPIO_WritePin(controller->pins.cmd_GPIO_Port, controller->pins.cmd_GPIO_Pin, GPIO_PIN_RESET);
 }
 
+#endif
+
 /** @brief                  A function to set the attention pin high.
  *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
  *                          controller.
  */
 static inline void PS2_ATT_SET(PS2ControllerStates_t *controller) {
+#ifdef PS2_SPI
+    HAL_GPIO_WritePin(controller->ChipSelect_GPIO_Port, controller->ChipSelect_GPIO_Pin, GPIO_PIN_SET);
+
+#else
     HAL_GPIO_WritePin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin, GPIO_PIN_SET);
+#endif
 }
 
 /** @brief                  A function to set the attention pin low.
@@ -187,9 +204,15 @@ static inline void PS2_ATT_SET(PS2ControllerStates_t *controller) {
  *                          controller.
  */
 static inline void PS2_ATT_CLR(PS2ControllerStates_t *controller) {
+#ifdef PS2_SPI
+    HAL_GPIO_WritePin(controller->ChipSelect_GPIO_Port, controller->ChipSelect_GPIO_Pin, GPIO_PIN_RESET);
+
+#else
     HAL_GPIO_WritePin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin, GPIO_PIN_RESET);
+#endif
 }
 
+#ifndef PS2_SPI
 /** @brief                  A function to read the value of the data pin.
  *  @param  controller      A pointer to the PS2ControllerStates_t instance for the specified
  *                          controller.
@@ -197,6 +220,7 @@ static inline void PS2_ATT_CLR(PS2ControllerStates_t *controller) {
 static inline _Bool PS2_DAT_CHK(PS2ControllerStates_t *controller) {
     return HAL_GPIO_ReadPin(controller->pins.att_GPIO_Port, controller->pins.att_GPIO_Pin);
 }
+#endif
 
 /* ====================================================================================================================================================== */
 /*                                                      Addition of function declarations                                                                 */
